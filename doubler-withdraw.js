@@ -35,6 +35,11 @@ async function main() {
     await response.wait()
     console.log('Withdraw txhash:',response.hash)
     remove(`${value}`)
+    await sleep(10000);
     process.exit(0);
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 main();
