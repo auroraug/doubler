@@ -11,12 +11,12 @@ const Provider = new ethers.providers.JsonRpcProvider(
     "sepolia"
   );
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY1, provider);
-// approve地址
+// approve to 
 const linkAddr = '0xcd97aa0Fce06A359489429984376FD78d42f527A'
 const ethAddr = '0x1629D7D8E39A0747677BFbF61c7643F112037B40'
 const snxAddr = '0x24eCe36071BbfFCfA6E0BbE98B76612e06c0220D'
-// 配置参数
-const poolId = 48625;
+// params config
+const poolId = 59208;
 const Units = 1;
 const value = ethers.utils.parseEther('0.1') //Units * Unit Size i.e. 200 * 0.0098 = 1.96
 const params = ['0x635ff8246201f0ba7dc728672cdffb769dc1c933',value]
@@ -27,27 +27,28 @@ const depositHexdata = '0xaf1eaaef'+calldata1.substring(2)
 
 async function input() {
     const exist = await isExist(`${poolId}`);
+    console.log('added:',exist)
     if(!exist) {
         const nonce = await provider.getTransactionCount(signer.address, 'latest');
         let gasPrice = await provider.getGasPrice();
         const tx = {
             nonce: nonce,
             gasPrice: gasPrice,
-            gasLimit: 3000000, // 设置足够的gas限制以确保交易成功
-            to: snxAddr,
+            gasLimit: 3000000,
+            to: linkAddr,
             value: 0,
             data: approveHexdata,
         };
         const tx1 = {
             nonce: nonce+1,
             gasPrice: gasPrice,
-            gasLimit: 3000000, // 设置足够的gas限制以确保交易成功
+            gasLimit: 3000000,
             to: '0x635ff8246201f0ba7dc728672cdffb769dc1c933',
             value: 0,
             data: depositHexdata,
         };
         try{
-            // 并行发送两笔交易并等待确认
+            // Send two transactions in parallel and wait for confirmation
             const [approveResponse, depositResponse] = await Promise.all([
                 signer.sendTransaction(tx),
                 signer.sendTransaction(tx1),
@@ -62,11 +63,11 @@ async function input() {
             console.log('Deposit Transaction Hash:', depositResponse.hash);
             await addPool(depositResponse.hash).then((result) => {
                 // console.log(result)
-                // 写入excel
+                // write in excel
                 add(poolId,result);
             })
             console.log('gwei:',ethers.utils.formatUnits(gasPrice,9))
-            await sleep(10000)
+            await sleep(10000) // wait 10 seconds
             process.exit(0);
         } catch (error) {
             console.error('Error:', error);
@@ -96,9 +97,9 @@ async function addPool(txhash) {
             }
 
             if (tokenIdPromises.length > 0) {
-                // 使用 Promise.all 等待所有异步操作完成
+                // use Promise.all and wait for all asynchronous operations to complete
                 const tokenIds = await Promise.all(tokenIdPromises);
-                return tokenIds[0]; // 返回第一个 tokenId
+                return tokenIds[0]; // return the first tokenId
             }
         } else {
             console.log('No logs found in this transaction.');
@@ -107,7 +108,7 @@ async function addPool(txhash) {
         console.error('Error:', error);
     }
 
-    return null; // 如果没有找到匹配的日志，可以返回 null 或其他适当的默认值
+    return null; // mismatch
 }
 
 function sleep(ms) {
