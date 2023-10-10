@@ -25,38 +25,6 @@ const calldata1 = ethers.utils.defaultAbiCoder.encode(['uint256','uint256'],[poo
 const approveHexdata = '0x095ea7b3'+calldata.substring(2)
 const depositHexdata = '0xaf1eaaef'+calldata1.substring(2)
 
-// async function mint() {
-//     // approve
-//     const nonce = await provider.getTransactionCount(signer.address, 'latest');
-//     let gasPrice = await provider.getGasPrice();
-//     // console.log(gasPrice.toNumber());
-//     // const gasPrice = ethers.utils.parseUnits('1.6','gwei');
-//     const tx = {
-//         nonce: nonce,
-//         gasPrice: gasPrice,
-//         gasLimit: 3000000, // 设置足够的gas限制以确保交易成功
-//         to: linkAddr,
-//         value: 0,
-//         data: approveHexdata,
-//     };
-//     const tx1 = {
-//         nonce: nonce+1,
-//         gasPrice: gasPrice,
-//         gasLimit: 3000000, // 设置足够的gas限制以确保交易成功
-//         to: '0x635ff8246201f0ba7dc728672cdffb769dc1c933',
-//         value: 0,
-//         data: depositHexdata,
-//     };
-//     // 发送交易并等待确认
-//     const response = await signer.sendTransaction(tx);
-//     await response.wait();
-//     // deposit
-//     gasPrice = await provider.getGasPrice();
-    
-//     const response1 = await signer.sendTransaction(tx1);
-//     await response1.wait();
-//     console.log('Transaction Hash:', response1.hash);
-// }
 async function input() {
     const exist = await isExist(`${poolId}`);
     if(!exist) {
@@ -144,5 +112,5 @@ async function addPool(txhash) {
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
+}
 input();
