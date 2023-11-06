@@ -1,6 +1,5 @@
 const {ethers} = require("hardhat");
 require("dotenv").config();
-const {remove,getBValueByAValue,isExist} = require("./excel");
 
 const provider = new ethers.providers.WebSocketProvider(
     process.env.ALCHEMY_API_KEY_URL,
@@ -11,48 +10,97 @@ const Provider = new ethers.providers.JsonRpcProvider(
     "sepolia"
 )
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY1,provider);
-const withdraw = '0x2e1a7d4d' // if the status of the next layer is 'ON'
-const gain = '0x022e6df6'    // if the pool was ended
 
-async function main(_poolId) {
-    const exist = await isExist(`${_poolId}`);
-    console.log('added:',exist)
-    if(!exist) {
-        const gasPrice = await wallet.getGasPrice();
-        console.log(ethers.utils.formatUnits(gasPrice,9))
-        const nonce = await wallet.getTransactionCount('latest');
-        const tokenId = await getBValueByAValue(`${_poolId}`)
-        console.log(tokenId)
-        const param = ethers.utils.defaultAbiCoder.encode(['uint256'],[parseInt(tokenId)])
-        const calldata = withdraw+param.substring(2) // withdraw's calldata
-        const calldata1 = gain+param.substring(2) // gain's calldata
-
+function buildTx(events,num) {
+    let nonce = num
+    const transactions = []
+    for (const event of events) {
+        const calldata = '0x022e6df6'+ethers.utils.defaultAbiCoder.encode(['uint'],[parseInt(event)]).substring(2)
         const tx = {
             nonce: nonce,
-            gasPrice: gasPrice,
-            gasLimit: 3000000,
             to: '0x635ff8246201f0Ba7dC728672CDFfB769DC1c933',
             value: 0,
+            gasLimit: 3000000,
             data: calldata
         }
-        const response = await wallet.sendTransaction(tx);
-        await response.wait()
-        console.log('Withdraw txhash:',response.hash)
-        remove(`${tokenId}`)
-    }else process.exit(1)
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function execute() {
-    // poolId array
-    const array = [77153,77154,77155]
-    for(let i = 0; i < array.length; i++){
-        await main(array[i]);
+        transactions.push(tx)
+        nonce++;
     }
-    await sleep(1000);
-    process.exit(0);
+    return transactions;
 }
-execute();
+// gain all the LP token
+async function Gain(tokens) {
+    const nonce = await wallet.getTransactionCount('latest');
+    const transactions = buildTx(tokens,nonce);
+    try {
+        await Promise.all(
+            transactions.map(transaction => wallet.sendTransaction(transaction))
+        ).then(() => {
+            console.log('All transactions have been sent successfully!')
+            process.exit(1)
+        })
+    } catch (error) {
+        console.error(error)
+        process.exit()
+    }
+}
+// fetch the undrawn LP token
+async function queryAlive(_address) {
+    const inputfilter = {
+      address: '0x09547e68ce13fdecb5bf52fd17379fffa97cb797',
+      topics: [
+          '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+          null,
+          ethers.utils.hexZeroPad(_address,32),
+          null
+      ],
+      fromBlock: 4137553,
+      toBlock: 'latest'
+    };
+    const gainfilter = {
+      address: '0x635ff8246201f0ba7dc728672cdffb769dc1c933',
+      topics: [
+          '0xe4318cbbcd43f45d3616ef5218ed36e0aa9c4e1031ca53b7ef373e5b4bc004d6',
+          null,
+          null,
+          ethers.utils.hexZeroPad(_address,32)
+      ],
+      fromBlock: 4137553,
+      toBlock: 'latest'
+    };
+    const withdrawfilter = {
+      address: '0x635ff8246201f0ba7dc728672cdffb769dc1c933',
+      topics: [
+          '0x64b7ede42bee285f28adff7881662a3c0936fb456e5be5bbba9ac6ca125c4293',
+          null,
+          null,
+          ethers.utils.hexZeroPad(_address,32)
+      ],
+      fromBlock: 4137553,
+      toBlock: 'latest'
+    };
+    try {
+      const [inputLogs, gainLogs, withdrawLogs] = await Promise.all([
+        fetchLogs(provider, [inputfilter]),
+        fetchLogs(provider, [gainfilter]),
+        fetchLogs(provider, [withdrawfilter])
+      ]);
+  
+      const input = inputLogs.map(log => parseInt(log.topics[3], 16));
+      const withdraw = new Set([...new Set([...gainLogs, ...withdrawLogs].map(log => parseInt(log.topics[1], 16)))]);
+      const filter = input.filter(itemA => !withdraw.has(itemA));
+      return filter;
+    } catch (error) {
+      console.error('An error occurred while querying logs: ', error);
+    }
+  }
+  
+async function fetchLogs(provider, filters) {
+    const logs = await Promise.all(filters.map(filter => provider.getLogs(filter)));
+    return logs.flat();
+  }
+
+module.exports = {
+    provider,
+    Provider
+}
