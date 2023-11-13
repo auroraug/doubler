@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const fs = require('fs');
 
-// 生成RSA密钥对
+// generates key-pair
 function generateRSAKeyPair() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048, // 密钥长度
+    modulusLength: 2048, // key length
     publicKeyEncoding: {
       type: 'spki',
       format: 'pem',
@@ -18,14 +18,14 @@ function generateRSAKeyPair() {
   return { publicKey, privateKey };
 }
 
-// 使用RSA公钥加密内容
+// encrypting with pub_k
 function encryptWithRSAPublicKey(publicKey, plaintext) {
   const bufferPlaintext = Buffer.from(plaintext, 'utf8');
   const encryptedData = crypto.publicEncrypt(publicKey, bufferPlaintext);
   return encryptedData.toString('base64');
 }
 
-// 使用RSA私钥解密内容
+// decrypting with private_k
 function decryptWithRSAPrivateKey(privateKey, encryptedData) {
     const bufferEncryptedData = Buffer.from(encryptedData, 'base64');
     const decryptedData = crypto.privateDecrypt(privateKey, bufferEncryptedData);
